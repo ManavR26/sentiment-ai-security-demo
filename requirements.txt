@@ -1,0 +1,6 @@
+# These versions have known Critical CVEs
+Django==1.11.29
+requests==2.19.0
+flask==0.12
+pyyaml==3.13
+pillow==6.2.1
