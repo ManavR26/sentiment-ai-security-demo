@@ -1,36 +1,66 @@
-from flask import Flask, request
+from flask import Flask, request, render_template_string, send_file
 import sqlite3
+import subprocess
+import pickle
+import hashlib
 import os
 
 app = Flask(__name__)
 
-# 🚨 VULNERABILITY 1: Hardcoded Cloud Secrets
-AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
-AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+# 🚨 1. SECRETS LEAK (Category: Exposed Credentials)
+AWS_SECRET_KEY = "AKIAIOSFODNN7EXAMPLE"
+GITHUB_TOKEN = "ghp_16C7e42F292c6912E7710c838347Ae178B4a"
 
-@app.route('/login', methods=['POST'])
-def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
-    
-    # 🚨 VULNERABILITY 2: Severe SQL Injection (SQLi)
-    conn = sqlite3.connect('database.db')
+# 🚨 2. SQL INJECTION (Category: Injection)
+@app.route('/user')
+def get_user():
+    user_id = request.args.get('id')
+    conn = sqlite3.connect('app.db')
     cursor = conn.cursor()
-    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-    cursor.execute(query)
-    
-    if cursor.fetchone():
-        return "Welcome to the admin panel!"
-    return "Login failed."
+    # Vulnerable: Direct string interpolation in SQL query
+    cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+    return str(cursor.fetchall())
 
-@app.route('/ping', methods=['GET'])
-def ping_server():
-    ip_address = request.args.get('ip')
-    
-    # 🚨 VULNERABILITY 3: Remote Code Execution / Command Injection
-    # Never pass user input directly into os.system!
-    result = os.system(f"ping -c 1 {ip_address}")
-    return f"Ping executed with result: {result}"
+# 🚨 3. COMMAND INJECTION (Category: Remote Code Execution)
+@app.route('/ping')
+def ping():
+    ip = request.args.get('ip')
+    # Vulnerable: Unsanitized user input passed directly to the system shell
+    subprocess.call(f"ping -c 1 {ip}", shell=True)
+    return "Ping executed!"
 
+# 🚨 4. CROSS-SITE SCRIPTING / XSS (Category: Injection)
+@app.route('/hello')
+def hello():
+    name = request.args.get('name', 'Guest')
+    # Vulnerable: Rendering user input directly into HTML without escaping it
+    template = f"<h1>Welcome to the dashboard, {name}!</h1>"
+    return render_template_string(template)
+
+# 🚨 5. INSECURE DESERIALIZATION (Category: Software and Data Integrity Failures)
+@app.route('/load_config', methods=['POST'])
+def load_config():
+    data = request.data
+    # Vulnerable: Unpickling untrusted data allows attackers to execute arbitrary code
+    config = pickle.loads(data)
+    return "Config loaded"
+
+# 🚨 6. PATH TRAVERSAL (Category: Broken Access Control)
+@app.route('/download')
+def download_file():
+    filename = request.args.get('file')
+    # Vulnerable: An attacker can pass '../../etc/passwd' to steal server files
+    return send_file(os.path.join('/var/www/uploads/', filename))
+
+# 🚨 7. WEAK CRYPTOGRAPHY (Category: Cryptographic Failures)
+@app.route('/hash')
+def hash_password():
+    password = request.args.get('password')
+    # Vulnerable: MD5 is a broken hashing algorithm and easily cracked
+    hashed = hashlib.md5(password.encode()).hexdigest()
+    return hashed
+
+# 🚨 8. SECURITY MISCONFIGURATION (Category: Misconfiguration)
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Vulnerable: Running Flask in debug mode on a public interface exposes the Werkzeug console
+    app.run(host='0.0.0.0', port=5000, debug=True)
