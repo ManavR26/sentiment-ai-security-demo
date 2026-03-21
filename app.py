@@ -8,8 +8,8 @@ import os
 app = Flask(__name__)
 
 # 🚨 1. SECRETS LEAK (Category: Exposed Credentials)
-AWS_SECRET_KEY = "AKIAIOSFODNN7EXAMPLE"
-GITHUB_TOKEN = "ghp_16C7e42F292c6912E7710c838347Ae178B4a"
+AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 # 🚨 2. SQL INJECTION (Category: Injection)
 @app.route('/user')
