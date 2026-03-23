@@ -49,8 +49,13 @@ def load_config():
 @app.route('/download')
 def download_file():
     filename = request.args.get('file')
-    # Vulnerable: An attacker can pass '../../etc/passwd' to steal server files
-    return send_file(os.path.join('/var/www/uploads/', filename))
+    base_dir = '/var/www/uploads/'
+    filepath = os.path.abspath(os.path.join(base_dir, filename))
+    if not filepath.startswith(base_dir):
+        return "Forbidden", 403
+    if not os.path.isfile(filepath):
+        return "File not found", 404
+    return send_file(filepath)
 
 # 🚨 7. WEAK CRYPTOGRAPHY (Category: Cryptographic Failures)
 @app.route('/hash')
