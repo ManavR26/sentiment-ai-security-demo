@@ -4,6 +4,7 @@ import subprocess
 import pickle
 import hashlib
 import os
+import pathlib
 
 app = Flask(__name__)
 
@@ -49,13 +50,13 @@ def load_config():
 @app.route('/download')
 def download_file():
     filename = request.args.get('file')
-    base_dir = '/var/www/uploads/'
-    filepath = os.path.abspath(os.path.join(base_dir, filename))
-    if not filepath.startswith(base_dir):
+    base_dir = pathlib.Path('/var/www/uploads/')
+    filepath = base_dir / filename
+    if not filepath.is_relative_to(base_dir):
         return "Forbidden", 403
-    if not os.path.isfile(filepath):
+    if not filepath.is_file():
         return "File not found", 404
-    return send_file(filepath)
+    return send_file(str(filepath))
 
 # 🚨 7. WEAK CRYPTOGRAPHY (Category: Cryptographic Failures)
 @app.route('/hash')
