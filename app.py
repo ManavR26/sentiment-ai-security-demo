@@ -46,16 +46,6 @@ def load_config():
     config = pickle.loads(data)
     return "Config loaded"
 
-@app.route('/download')
-def download_file():
-    filename = request.args.get('file')
-    base_dir = pathlib.Path('/var/www/uploads/')
-    filepath = base_dir / filename
-    if not filepath.is_relative_to(base_dir):
-        return "Forbidden", 403
-    if not filepath.is_file():
-        return "File not found", 404
-    return send_file(str(filepath))
     
 # 🚨 7. WEAK CRYPTOGRAPHY (Category: Cryptographic Failures)
 @app.route('/hash')
